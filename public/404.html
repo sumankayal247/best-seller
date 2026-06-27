@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Best Seller</title>
+    <!--
+      SPA fallback for GitHub Pages. GH Pages serves this file for any unknown
+      path; we encode the requested route into a query string and bounce back to
+      the app's index.html, which decodes it (see the snippet in index.html).
+      Based on rafrex/spa-github-pages.
+    -->
+    <script>
+      (function () {
+        var pathSegmentsToKeep = 1; // keep "/best-seller/"
+        var l = window.location;
+        l.replace(
+          l.protocol +
+            '//' +
+            l.hostname +
+            (l.port ? ':' + l.port : '') +
+            l.pathname
+              .split('/')
+              .slice(0, 1 + pathSegmentsToKeep)
+              .join('/') +
+            '/?/' +
+            l.pathname.slice(1).split('/').slice(pathSegmentsToKeep).join('/').replace(/&/g, '~and~') +
+            (l.search ? '&' + l.search.slice(1).replace(/&/g, '~and~') : '') +
+            l.hash,
+        );
+      })();
+    </script>
+  </head>
+  <body></body>
+</html>
