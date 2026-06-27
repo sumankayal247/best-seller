@@ -1,6 +1,5 @@
 import { useState } from 'react';
-import { cn } from '@/lib/utils';
-import { hueFromString } from '@/lib/utils';
+import { cn, hueFromString } from '@/lib/utils';
 
 interface LazyImageProps {
   src: string;
@@ -8,13 +7,15 @@ interface LazyImageProps {
   className?: string;
   /** Seed for the colour of the blur placeholder gradient. */
   seed?: string;
+  /** object-fit mode for the image. */
+  fit?: 'cover' | 'contain';
 }
 
 /**
  * Native lazy-loaded image with a coloured gradient placeholder that fades out
  * once the real image decodes. Falls back to the placeholder on error.
  */
-export function LazyImage({ src, alt, className, seed = src }: LazyImageProps) {
+export function LazyImage({ src, alt, className, seed = src, fit = 'cover' }: LazyImageProps) {
   const [loaded, setLoaded] = useState(false);
   const [failed, setFailed] = useState(false);
   const hue = hueFromString(seed);
@@ -27,7 +28,7 @@ export function LazyImage({ src, alt, className, seed = src }: LazyImageProps) {
           loaded && !failed ? 'opacity-0' : 'opacity-100',
         )}
         style={{
-          background: `linear-gradient(135deg, hsl(${hue} 70% 88%), hsl(${(hue + 40) % 360} 65% 78%))`,
+          background: `linear-gradient(135deg, hsl(${hue} 70% 90%), hsl(${(hue + 40) % 360} 65% 82%))`,
         }}
         aria-hidden
       />
@@ -40,7 +41,8 @@ export function LazyImage({ src, alt, className, seed = src }: LazyImageProps) {
           onLoad={() => setLoaded(true)}
           onError={() => setFailed(true)}
           className={cn(
-            'h-full w-full object-cover transition-all duration-700',
+            'h-full w-full transition-all duration-700',
+            fit === 'contain' ? 'object-contain' : 'object-cover',
             loaded ? 'scale-100 opacity-100 blur-0' : 'scale-105 opacity-0 blur-md',
           )}
         />

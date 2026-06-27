@@ -29,9 +29,10 @@ export const storage = {
 
 export const STORAGE_KEYS = {
   theme: 'bs-theme',
-  favorites: 'bs-favorites',
-  recentlyViewed: 'bs-recently-viewed',
+  country: 'bs-country',
+  favorites: 'bs-favorites-v2',
+  recentlyViewed: 'bs-recently-viewed-v2',
   recentPlatforms: 'bs-recent-platforms',
   lastPlatform: 'bs-last-platform',
-  lastFilters: 'bs-last-filters',
+  lastFilters: 'bs-last-filters-v2',
 } as const;

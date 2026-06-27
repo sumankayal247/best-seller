@@ -2,24 +2,17 @@ import { useState } from 'react';
 import type { Product } from '@/types';
 import { ProductCard } from '@/components/product/ProductCard';
 import { QuickPreviewModal } from '@/components/product/QuickPreviewModal';
-import { useUserData } from '@/context/UserDataContext';
 
-/**
- * Responsive product grid that owns the quick-preview modal and records
- * recently-viewed items whenever a product is opened or previewed.
- */
-export function ProductGrid({ products }: { products: Product[] }) {
+interface ProductGridProps {
+  products: Product[];
+  platformId: string;
+  /** When true, show best-seller rank chips based on list position. */
+  ranked?: boolean;
+}
+
+/** Responsive product grid that owns the quick-preview modal. */
+export function ProductGrid({ products, platformId, ranked }: ProductGridProps) {
   const [preview, setPreview] = useState<Product | null>(null);
-  const { pushRecentlyViewed } = useUserData();
-
-  const handleQuickView = (product: Product) => {
-    pushRecentlyViewed(product.id);
-    setPreview(product);
-  };
-
-  const handleOpen = (product: Product) => {
-    pushRecentlyViewed(product.id);
-  };
 
   return (
     <>
@@ -28,13 +21,18 @@ export function ProductGrid({ products }: { products: Product[] }) {
           <ProductCard
             key={product.id}
             product={product}
+            platformId={platformId}
             index={i}
-            onQuickView={handleQuickView}
-            onOpen={handleOpen}
+            rank={ranked ? i + 1 : undefined}
+            onQuickView={setPreview}
           />
         ))}
       </div>
-      <QuickPreviewModal product={preview} onClose={() => setPreview(null)} onOpen={handleOpen} />
+      <QuickPreviewModal
+        product={preview}
+        platformId={platformId}
+        onClose={() => setPreview(null)}
+      />
     </>
   );
 }

@@ -3,12 +3,13 @@ import { useNavigate } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
 import { CornerDownLeft, Package, Search, Store, Tag, X } from 'lucide-react';
 import { createPortal } from 'react-dom';
-import { PLATFORMS } from '@/data/platforms';
 import { CATEGORIES } from '@/data/categories';
 import { productRepository } from '@/services/productRepository';
 import { useDebounce } from '@/hooks/useDebounce';
+import { useCountry } from '@/context/CountryContext';
+import { useUserData } from '@/context/UserDataContext';
 import type { Product } from '@/types';
-import { cn, formatPrice } from '@/lib/utils';
+import { cn } from '@/lib/utils';
 import { PlatformLogo } from '@/components/platform/PlatformLogo';
 import { CategoryIcon } from '@/components/category/categoryIcon';
 
@@ -22,19 +23,19 @@ type Row =
   | { kind: 'category'; id: string; label: string; sub: string }
   | { kind: 'product'; product: Product };
 
-/**
- * Command-palette style global search across platforms, categories and
- * products. Instant + debounced, fully keyboard-navigable (↑/↓/Enter/Esc).
- */
+/** Command-palette search across platforms, categories and products. */
 export function GlobalSearch({ open, onClose }: GlobalSearchProps) {
   const navigate = useNavigate();
+  const { platforms, formatPrice } = useCountry();
+  const { pushRecentlyViewed } = useUserData();
   const inputRef = useRef<HTMLInputElement>(null);
   const [query, setQuery] = useState('');
   const debounced = useDebounce(query, 180);
   const [products, setProducts] = useState<Product[]>([]);
   const [active, setActive] = useState(0);
 
-  // Reset state each time the palette opens, and focus the field.
+  const defaultPlatform = platforms[0]?.id ?? 'flipkart';
+
   useEffect(() => {
     if (open) {
       setQuery('');
@@ -44,7 +45,6 @@ export function GlobalSearch({ open, onClose }: GlobalSearchProps) {
     }
   }, [open]);
 
-  // Fetch matching products for the query (platforms/categories are local).
   useEffect(() => {
     let cancelled = false;
     const q = debounced.trim();
@@ -52,9 +52,7 @@ export function GlobalSearch({ open, onClose }: GlobalSearchProps) {
       setProducts([]);
       return;
     }
-    productRepository.search(q, 6).then((res) => {
-      if (!cancelled) setProducts(res);
-    });
+    productRepository.search(q, 6).then((res) => !cancelled && setProducts(res));
     return () => {
       cancelled = true;
     };
@@ -63,33 +61,32 @@ export function GlobalSearch({ open, onClose }: GlobalSearchProps) {
   const rows = useMemo<Row[]>(() => {
     const q = debounced.trim().toLowerCase();
     if (!q) {
-      // Default state: surface the platforms as quick links.
-      return PLATFORMS.slice(0, 6).map((p) => ({
+      return platforms.slice(0, 6).map((p) => ({
         kind: 'platform' as const,
         id: p.id,
         label: p.name,
         sub: p.tagline,
       }));
     }
-    const platforms: Row[] = PLATFORMS.filter((p) => p.name.toLowerCase().includes(q)).map((p) => ({
-      kind: 'platform',
-      id: p.id,
-      label: p.name,
-      sub: p.tagline,
-    }));
-    const categories: Row[] = CATEGORIES.filter((c) => c.name.toLowerCase().includes(q))
+    const platformRows: Row[] = platforms
+      .filter((p) => p.name.toLowerCase().includes(q))
+      .map((p) => ({ kind: 'platform', id: p.id, label: p.name, sub: p.tagline }));
+    const categoryRows: Row[] = CATEGORIES.filter((c) => c.name.toLowerCase().includes(q))
       .slice(0, 5)
-      .map((c) => ({ kind: 'category', id: c.id, label: c.name, sub: c.group }));
-    const prods: Row[] = products.map((p) => ({ kind: 'product', product: p }));
-    return [...platforms, ...categories, ...prods];
-  }, [debounced, products]);
+      .map((c) => ({ kind: 'category', id: c.slug, label: c.name, sub: 'Category' }));
+    const productRows: Row[] = products.map((p) => ({ kind: 'product', product: p }));
+    return [...platformRows, ...categoryRows, ...productRows];
+  }, [debounced, products, platforms]);
 
   useEffect(() => setActive(0), [rows.length]);
 
   const go = (row: Row) => {
     if (row.kind === 'platform') navigate(`/p/${row.id}`);
-    else if (row.kind === 'category') navigate(`/p/amazon/${row.id}`);
-    else window.open(row.product.url, '_blank', 'noopener,noreferrer');
+    else if (row.kind === 'category') navigate(`/p/${defaultPlatform}/${row.id}`);
+    else {
+      pushRecentlyViewed(row.product.id);
+      navigate(`/p/${defaultPlatform}/product/${row.product.id}`);
+    }
     onClose();
   };
 
@@ -156,7 +153,7 @@ export function GlobalSearch({ open, onClose }: GlobalSearchProps) {
               ) : (
                 <ul className="space-y-0.5">
                   {rows.map((row, i) => (
-                    <li key={row.kind === 'product' ? row.product.id : `${row.kind}-${row.id}`}>
+                    <li key={row.kind === 'product' ? `p${row.product.id}` : `${row.kind}-${row.id}`}>
                       <button
                         onMouseEnter={() => setActive(i)}
                         onClick={() => go(row)}
@@ -177,9 +174,7 @@ export function GlobalSearch({ open, onClose }: GlobalSearchProps) {
                           </span>
                         </span>
                         <RowTag row={row} />
-                        {i === active && (
-                          <CornerDownLeft className="h-4 w-4 shrink-0 text-muted" />
-                        )}
+                        {i === active && <CornerDownLeft className="h-4 w-4 shrink-0 text-muted" />}
                       </button>
                     </li>
                   ))}
@@ -205,14 +200,15 @@ export function GlobalSearch({ open, onClose }: GlobalSearchProps) {
 }
 
 function RowIcon({ row }: { row: Row }) {
+  const { platforms } = useCountry();
   if (row.kind === 'platform') {
-    const platform = PLATFORMS.find((p) => p.id === row.id)!;
-    return <PlatformLogo platform={platform} className="h-9 w-9" textClassName="text-xs" />;
+    const platform = platforms.find((p) => p.id === row.id);
+    if (platform) return <PlatformLogo platform={platform} className="h-9 w-9" textClassName="text-xs" />;
   }
   if (row.kind === 'category') {
     return (
       <span className="grid h-9 w-9 place-items-center rounded-xl bg-brand/12 text-brand">
-        <CategoryIcon name={CATEGORIES.find((c) => c.id === row.id)?.icon ?? 'Tag'} className="h-4.5 w-4.5" />
+        <CategoryIcon name={CATEGORIES.find((c) => c.slug === row.id)?.icon ?? 'Tag'} className="h-4.5 w-4.5" />
       </span>
     );
   }

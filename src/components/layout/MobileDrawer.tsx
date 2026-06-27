@@ -2,9 +2,10 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
 import { Heart, Home, Search, Sparkles, Store, X } from 'lucide-react';
 import { createPortal } from 'react-dom';
-import { PLATFORMS } from '@/data/platforms';
 import { PlatformLogo } from '@/components/platform/PlatformLogo';
+import { CountrySelector } from '@/components/layout/CountrySelector';
 import { useUserData } from '@/context/UserDataContext';
+import { useCountry } from '@/context/CountryContext';
 import { cn } from '@/lib/utils';
 
 interface MobileDrawerProps {
@@ -14,15 +15,16 @@ interface MobileDrawerProps {
   onOpenSearch: () => void;
 }
 
-const LINKS = [
-  { to: '/', label: 'Platforms', Icon: Home },
-  { to: '/p/amazon', label: 'Explore', Icon: Sparkles },
-  { to: '/favorites', label: 'Favorites', Icon: Heart },
-];
-
 /** Slide-in navigation drawer for small screens. */
 export function MobileDrawer({ open, onClose, currentPath, onOpenSearch }: MobileDrawerProps) {
   const { favorites } = useUserData();
+  const { platforms } = useCountry();
+
+  const links = [
+    { to: '/', label: 'Platforms', Icon: Home },
+    { to: `/p/${platforms[0]?.id ?? 'flipkart'}`, label: 'Explore', Icon: Sparkles },
+    { to: '/favorites', label: 'Favorites', Icon: Heart },
+  ];
 
   return createPortal(
     <AnimatePresence>
@@ -61,20 +63,23 @@ export function MobileDrawer({ open, onClose, currentPath, onOpenSearch }: Mobil
             </div>
 
             <div className="flex-1 overflow-y-auto px-3 py-4">
-              <button
-                onClick={onOpenSearch}
-                className="mb-4 flex w-full items-center gap-3 rounded-2xl border border-border bg-surface-2 px-4 py-3 text-sm text-muted"
-              >
-                <Search className="h-4 w-4" />
-                Search everything…
-              </button>
+              <div className="mb-3 flex items-center gap-2 px-1">
+                <button
+                  onClick={onOpenSearch}
+                  className="flex flex-1 items-center gap-3 rounded-2xl border border-border bg-surface-2 px-4 py-3 text-sm text-muted"
+                >
+                  <Search className="h-4 w-4" />
+                  Search…
+                </button>
+                <CountrySelector />
+              </div>
 
               <nav className="space-y-1">
-                {LINKS.map(({ to, label, Icon }) => {
+                {links.map(({ to, label, Icon }) => {
                   const active = currentPath === to;
                   return (
                     <Link
-                      key={to}
+                      key={label}
                       to={to}
                       onClick={onClose}
                       className={cn(
@@ -98,7 +103,7 @@ export function MobileDrawer({ open, onClose, currentPath, onOpenSearch }: Mobil
                 <Store className="h-3.5 w-3.5" /> Platforms
               </p>
               <div className="space-y-1">
-                {PLATFORMS.map((p) => (
+                {platforms.map((p) => (
                   <Link
                     key={p.id}
                     to={`/p/${p.id}`}

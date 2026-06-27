@@ -1,13 +1,22 @@
+import { useNavigate } from 'react-router-dom';
 import { Clock, X } from 'lucide-react';
 import type { Product } from '@/types';
-import { getPlatform } from '@/data/platforms';
+import { getCategory } from '@/data/categories';
 import { LazyImage } from '@/components/ui/LazyImage';
 import { useUserData } from '@/context/UserDataContext';
-import { formatPrice } from '@/lib/utils';
+import { useCountry } from '@/context/CountryContext';
 
-/** Horizontal rail of recently-viewed products (persisted in localStorage). */
-export function RecentlyViewedRail({ products }: { products: Product[] }) {
+interface RecentlyViewedRailProps {
+  products: Product[];
+  /** Platform context for the detail link. */
+  platformId: string;
+}
+
+/** Horizontal rail of recently-viewed products (persisted locally). */
+export function RecentlyViewedRail({ products, platformId }: RecentlyViewedRailProps) {
+  const navigate = useNavigate();
   const { clearRecentlyViewed, pushRecentlyViewed } = useUserData();
+  const { formatPrice } = useCountry();
   if (products.length === 0) return null;
 
   return (
@@ -26,27 +35,28 @@ export function RecentlyViewedRail({ products }: { products: Product[] }) {
 
       <div className="no-scrollbar flex gap-4 overflow-x-auto pb-2">
         {products.map((product) => {
-          const platform = getPlatform(product.platformId);
+          const category = getCategory(product.category);
           return (
             <button
               key={product.id}
               onClick={() => {
                 pushRecentlyViewed(product.id);
-                window.open(product.url, '_blank', 'noopener,noreferrer');
+                navigate(`/p/${platformId}/product/${product.id}`);
               }}
               className="group w-40 shrink-0 overflow-hidden rounded-2xl border border-border bg-surface text-left shadow-soft transition hover:shadow-soft-lg"
             >
-              <div className="aspect-square w-full overflow-hidden bg-surface-2">
+              <div className="aspect-square w-full overflow-hidden bg-white">
                 <LazyImage
-                  src={product.image}
+                  src={product.thumbnail}
                   alt={product.title}
-                  seed={product.id}
-                  className="h-full w-full transition-transform duration-500 group-hover:scale-105"
+                  seed={String(product.id)}
+                  fit="contain"
+                  className="h-full w-full p-3 transition-transform duration-500 group-hover:scale-105"
                 />
               </div>
               <div className="p-3">
                 <p className="truncate text-[11px] font-semibold uppercase tracking-wide text-muted">
-                  {platform?.name}
+                  {category?.name}
                 </p>
                 <p className="mt-0.5 line-clamp-2 text-xs font-medium text-fg">{product.title}</p>
                 <p className="mt-1 text-sm font-bold text-fg">{formatPrice(product.price)}</p>

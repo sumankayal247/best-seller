@@ -1,123 +1,165 @@
-import type {
-  PageResult,
-  Product,
-  ProductFilters,
-  SortKey,
-  TimeRange,
-} from '@/types';
-import { getCatalog, REFERENCE_NOW } from '@/data/productCatalog';
+import type { PageResult, Product, ProductFilters, ProductReview, SortKey } from '@/types';
 
 /**
- * The data-access seam.
+ * Data-access layer backed by the public DummyJSON catalog API
+ * (https://dummyjson.com — free, no key, CORS-enabled).
  *
- * Today this filters/sorts/paginates the in-memory mock catalog behind an async,
- * Promise-based interface that mimics a network call (latency included). To go
- * live, reimplement these methods to call a REST/GraphQL endpoint or a scraping
- * service — the return types are the contract and nothing in the UI changes.
+ * The API doesn't support price/rating/brand filtering server-side, so we fetch
+ * the relevant set (a category, or everything) once, cache it, then filter, sort
+ * and paginate on the client. This keeps totals accurate and every filter live.
+ *
+ * Swapping to a different source (an affiliate API behind a backend, etc.) only
+ * means reimplementing this module — the UI depends solely on these methods.
  */
 
-const TIME_RANGE_DAYS: Record<TimeRange, number> = {
-  week: 7,
-  month: 30,
-  '3months': 91,
-  '6months': 182,
-  year: 365,
-  '2years': 730,
-  '5years': 1825,
-};
+const API = 'https://dummyjson.com';
+
+interface RawProduct {
+  id: number;
+  title: string;
+  description: string;
+  category: string;
+  price: number;
+  discountPercentage: number;
+  rating: number;
+  stock: number;
+  tags: string[];
+  brand?: string;
+  sku: string;
+  warrantyInformation: string;
+  shippingInformation: string;
+  availabilityStatus: string;
+  returnPolicy: string;
+  reviews: ProductReview[];
+  images: string[];
+  thumbnail: string;
+}
+
+function mapProduct(raw: RawProduct): Product {
+  const discount = Math.round(raw.discountPercentage);
+  const mrp = discount > 0 ? Math.round(raw.price / (1 - discount / 100)) : raw.price;
+  return {
+    id: raw.id,
+    title: raw.title,
+    brand: raw.brand?.trim() || 'Generic',
+    category: raw.category,
+    description: raw.description,
+    thumbnail: raw.thumbnail,
+    images: raw.images?.length ? raw.images : [raw.thumbnail],
+    price: raw.price,
+    mrp,
+    discount,
+    rating: raw.rating,
+    reviews: raw.reviews ?? [],
+    reviewsCount: raw.reviews?.length ?? 0,
+    stock: raw.stock,
+    inStock: raw.stock > 0 && raw.availabilityStatus !== 'Out of Stock',
+    availabilityStatus: raw.availabilityStatus,
+    tags: raw.tags ?? [],
+    popularity: Math.round((raw.rating / 5) * 100),
+    sku: raw.sku,
+    warranty: raw.warrantyInformation,
+    shipping: raw.shippingInformation,
+    returnPolicy: raw.returnPolicy,
+  };
+}
 
 const SORTERS: Record<SortKey, (a: Product, b: Product) => number> = {
-  popularity: (a, b) => b.popularity - a.popularity || a.rank - b.rank,
-  rating: (a, b) => b.rating - a.rating || b.ratingCount - a.ratingCount,
-  reviews: (a, b) => b.ratingCount - a.ratingCount,
-  newest: (a, b) => Date.parse(b.addedAt) - Date.parse(a.addedAt),
+  popularity: (a, b) => b.popularity - a.popularity || b.rating - a.rating,
+  rating: (a, b) => b.rating - a.rating,
   priceAsc: (a, b) => a.price - b.price,
   priceDesc: (a, b) => b.price - a.price,
   discount: (a, b) => b.discount - a.discount,
+  title: (a, b) => a.title.localeCompare(b.title),
 };
 
-function matches(product: Product, f: ProductFilters): boolean {
-  if (f.platformId && product.platformId !== f.platformId) return false;
-  if (f.categoryId && product.categoryId !== f.categoryId) return false;
-  if (f.minPrice != null && product.price < f.minPrice) return false;
-  if (f.maxPrice != null && product.price > f.maxPrice) return false;
-  if (f.minRating != null && product.rating < f.minRating) return false;
-  if (f.minDiscount != null && product.discount < f.minDiscount) return false;
-  if (f.flagshipOnly && !product.isFlagship) return false;
-  if (f.inStockOnly && !product.inStock) return false;
-  if (f.trendingOnly && !product.isTrending) return false;
-  if (f.bestSellerOnly && !product.isBestSeller) return false;
-  if (f.brands && f.brands.length > 0 && !f.brands.includes(product.brand)) return false;
+// ---- Caching ---------------------------------------------------------------
 
-  if (f.timeRange) {
-    const cutoff = REFERENCE_NOW - TIME_RANGE_DAYS[f.timeRange] * 86400000;
-    if (Date.parse(product.addedAt) < cutoff) return false;
-  }
+const cache = new Map<string, Promise<Product[]>>();
 
-  if (f.query) {
-    const q = f.query.trim().toLowerCase();
-    if (q) {
-      const haystack = `${product.title} ${product.brand} ${product.description}`.toLowerCase();
-      if (!haystack.includes(q)) return false;
-    }
+async function fetchSet(category?: string): Promise<Product[]> {
+  const key = category ?? '__all__';
+  let pending = cache.get(key);
+  if (!pending) {
+    const url = category
+      ? `${API}/products/category/${encodeURIComponent(category)}?limit=0`
+      : `${API}/products?limit=0`;
+    pending = fetch(url)
+      .then((res) => {
+        if (!res.ok) throw new Error(`Request failed (${res.status})`);
+        return res.json();
+      })
+      .then((data: { products: RawProduct[] }) => data.products.map(mapProduct))
+      .catch((err) => {
+        // Don't cache failures — allow a retry to refetch.
+        cache.delete(key);
+        throw err;
+      });
+    cache.set(key, pending);
   }
-  return true;
+  return pending;
 }
 
-/** Simulated network latency so skeleton loaders have a reason to exist. */
-const delay = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
+function applyFilters(products: Product[], f: ProductFilters): Product[] {
+  return products.filter((p) => {
+    if (f.maxPrice != null && p.price > f.maxPrice) return false;
+    if (f.minRating != null && p.rating < f.minRating) return false;
+    if (f.minDiscount != null && p.discount < f.minDiscount) return false;
+    if (f.inStockOnly && !p.inStock) return false;
+    if (f.brands && f.brands.length && !f.brands.includes(p.brand)) return false;
+    if (f.query) {
+      const q = f.query.trim().toLowerCase();
+      if (q && !`${p.title} ${p.brand} ${p.description}`.toLowerCase().includes(q)) return false;
+    }
+    return true;
+  });
+}
 
 export const productRepository = {
-  async query(
-    filters: ProductFilters,
-    page = 1,
-    pageSize = 12,
-  ): Promise<PageResult<Product>> {
-    await delay(280 + Math.random() * 260);
-
-    const sort = filters.sort ?? 'popularity';
-    const filtered = getCatalog().filter((p) => matches(p, filters));
-    filtered.sort(SORTERS[sort]);
+  async query(filters: ProductFilters, page = 1, pageSize = 12): Promise<PageResult<Product>> {
+    const base = await fetchSet(filters.category);
+    const filtered = applyFilters(base, filters);
+    filtered.sort(SORTERS[filters.sort ?? 'popularity']);
 
     const total = filtered.length;
     const start = (page - 1) * pageSize;
     const items = filtered.slice(start, start + pageSize);
-
     return { items, total, page, pageSize, hasMore: start + pageSize < total };
   },
 
-  /** Lightweight, low-latency search used by the global command palette. */
-  async search(query: string, limit = 8): Promise<Product[]> {
-    await delay(120);
+  /** Fast global search across the whole catalog (for the command palette). */
+  async search(query: string, limit = 6): Promise<Product[]> {
     const q = query.trim().toLowerCase();
     if (!q) return [];
-    const results = getCatalog().filter((p) =>
-      `${p.title} ${p.brand}`.toLowerCase().includes(q),
-    );
+    const all = await fetchSet();
+    const results = all.filter((p) => `${p.title} ${p.brand}`.toLowerCase().includes(q));
     results.sort(SORTERS.popularity);
     return results.slice(0, limit);
   },
 
-  async getById(id: string): Promise<Product | undefined> {
-    return getCatalog().find((p) => p.id === id);
+  async getById(id: number): Promise<Product | undefined> {
+    const all = await fetchSet();
+    return all.find((p) => p.id === id);
   },
 
-  async getByIds(ids: string[]): Promise<Product[]> {
-    const set = new Set(ids);
-    const found = getCatalog().filter((p) => set.has(p.id));
-    // Preserve caller's id ordering (e.g. recently-viewed is order-sensitive).
-    const byId = new Map(found.map((p) => [p.id, p]));
+  async getByIds(ids: number[]): Promise<Product[]> {
+    const all = await fetchSet();
+    const byId = new Map(all.map((p) => [p.id, p]));
     return ids.map((id) => byId.get(id)).filter((p): p is Product => Boolean(p));
   },
 
-  /** Distinct brands available for a platform/category — powers the brand filter. */
-  async brandsFor(filters: Pick<ProductFilters, 'platformId' | 'categoryId'>): Promise<string[]> {
-    const brands = new Set<string>();
-    for (const p of getCatalog()) {
-      if (filters.platformId && p.platformId !== filters.platformId) continue;
-      if (filters.categoryId && p.categoryId !== filters.categoryId) continue;
-      brands.add(p.brand);
-    }
-    return [...brands].sort();
+  /** Other top-rated products in the same category (for the detail page). */
+  async related(product: Product, limit = 6): Promise<Product[]> {
+    const set = await fetchSet(product.category);
+    return set
+      .filter((p) => p.id !== product.id)
+      .sort(SORTERS.popularity)
+      .slice(0, limit);
+  },
+
+  /** Distinct brands available within a category (powers the brand filter). */
+  async brandsFor(category?: string): Promise<string[]> {
+    const set = await fetchSet(category);
+    return [...new Set(set.map((p) => p.brand))].sort();
   },
 };

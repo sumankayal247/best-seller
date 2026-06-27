@@ -2,17 +2,15 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { AlertTriangle, SlidersHorizontal } from 'lucide-react';
-import type { ProductFilters, SortKey, TimeRange } from '@/types';
+import type { ProductFilters, SortKey } from '@/types';
 import { getPlatform } from '@/data/platforms';
 import { getCategory } from '@/data/categories';
 import { Breadcrumb } from '@/components/common/Breadcrumb';
 import { CategoryBar } from '@/components/category/CategoryBar';
-import { Pill } from '@/components/ui/Pill';
 import { Button } from '@/components/ui/Button';
 import { SortMenu } from '@/components/filters/SortMenu';
 import { AdvancedFilters } from '@/components/filters/AdvancedFilters';
 import { ActiveFilterChips } from '@/components/filters/ActiveFilterChips';
-import { TIME_RANGES } from '@/components/filters/filterMeta';
 import { ProductGrid } from '@/components/product/ProductGrid';
 import { ProductGridSkeleton } from '@/components/product/ProductCardSkeleton';
 import { EmptyState } from '@/components/common/EmptyState';
@@ -26,19 +24,10 @@ import NotFoundPage from '@/pages/NotFoundPage';
 /** Filter fields that persist across visits (location-independent). */
 type PersistedFilters = Pick<
   ProductFilters,
-  | 'timeRange'
-  | 'sort'
-  | 'minPrice'
-  | 'maxPrice'
-  | 'minRating'
-  | 'minDiscount'
-  | 'flagshipOnly'
-  | 'inStockOnly'
-  | 'trendingOnly'
-  | 'bestSellerOnly'
+  'sort' | 'maxPrice' | 'minRating' | 'minDiscount' | 'inStockOnly'
 >;
 
-const DEFAULT_PERSISTED: PersistedFilters = { timeRange: '6months', sort: 'popularity' };
+const DEFAULT_PERSISTED: PersistedFilters = { sort: 'popularity' };
 
 export default function CategoryPage() {
   const { platformId = '', categoryId = '' } = useParams();
@@ -47,7 +36,6 @@ export default function CategoryPage() {
   const category = getCategory(categoryId);
   const { pushRecentPlatform } = useUserData();
 
-  // Load remembered filters once, then keep them in state.
   const [persisted, setPersisted] = useState<PersistedFilters>(() => ({
     ...DEFAULT_PERSISTED,
     ...storage.get<Partial<PersistedFilters>>(STORAGE_KEYS.lastFilters, {}),
@@ -63,35 +51,28 @@ export default function CategoryPage() {
   }, [platform, pushRecentPlatform]);
 
   const filters = useMemo<ProductFilters>(
-    () => ({ platformId, categoryId, ...persisted }),
-    [platformId, categoryId, persisted],
+    () => ({ category: categoryId, ...persisted }),
+    [categoryId, persisted],
   );
 
   const { items, total, hasMore, loading, loadingMore, error, loadMore, retry } =
     useProductFeed(filters);
 
-  const { data: brands = [] } = useAsync(
-    () => productRepository.brandsFor({ platformId, categoryId }),
-    [platformId, categoryId],
-  );
+  const { data: brands = [] } = useAsync(() => productRepository.brandsFor(categoryId), [categoryId]);
 
   const patch = useCallback((p: Partial<ProductFilters>) => {
     setPersisted((prev) => ({ ...prev, ...p }));
   }, []);
 
-  const clearAll = useCallback(() => {
-    setPersisted({ sort: persisted.sort });
-  }, [persisted.sort]);
+  const clearAll = useCallback(() => setPersisted({ sort: persisted.sort }), [persisted.sort]);
 
-  // Auto-load next page when the sentinel scrolls into view (infinite scroll).
+  // Infinite scroll sentinel.
   const sentinelRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
     const node = sentinelRef.current;
     if (!node) return;
     const observer = new IntersectionObserver(
-      (entries) => {
-        if (entries[0].isIntersecting) loadMore();
-      },
+      (entries) => entries[0].isIntersecting && loadMore(),
       { rootMargin: '600px' },
     );
     observer.observe(node);
@@ -104,7 +85,6 @@ export default function CategoryPage() {
 
   return (
     <div>
-      {/* ---- Header ---- */}
       <section className="relative overflow-hidden">
         <div
           className="absolute inset-0 opacity-[0.1]"
@@ -113,17 +93,9 @@ export default function CategoryPage() {
         />
         <div className="relative mx-auto max-w-7xl px-4 pb-6 pt-10 sm:px-6 lg:px-8">
           <Breadcrumb
-            items={[
-              { label: platform.name, to: `/p/${platform.id}` },
-              { label: category.name },
-            ]}
+            items={[{ label: platform.name, to: `/p/${platform.id}` }, { label: category.name }]}
           />
-          <motion.div
-            initial={{ opacity: 0, y: 12 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.45 }}
-            className="mt-5"
-          >
+          <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.45 }} className="mt-5">
             <p className="text-sm font-semibold uppercase tracking-wide" style={{ color: platform.color }}>
               {platform.name}
             </p>
@@ -131,41 +103,20 @@ export default function CategoryPage() {
               {category.name}
             </h1>
             <p className="mt-2 text-sm text-muted">
-              The best-selling {category.name.toLowerCase()} on {platform.name}, ranked by real
-              popularity.
+              Top {category.name.toLowerCase()}, ranked by rating &amp; popularity.
             </p>
           </motion.div>
         </div>
       </section>
 
-      {/* ---- Sticky category switcher ---- */}
-      <CategoryBar
-        activeCategoryId={category.id}
-        onSelect={(id) => navigate(`/p/${platform.id}/${id}`)}
-      />
+      <CategoryBar activeSlug={category.slug} onSelect={(slug) => navigate(`/p/${platform.id}/${slug}`)} />
 
-      {/* ---- Toolbar ---- */}
       <div className="mx-auto max-w-7xl px-4 pt-6 sm:px-6 lg:px-8">
-        {/* Time-range pills */}
-        <div className="no-scrollbar flex items-center gap-2 overflow-x-auto pb-1">
-          {TIME_RANGES.map((tr) => (
-            <Pill
-              key={tr.id}
-              active={persisted.timeRange === tr.id}
-              onClick={() =>
-                patch({ timeRange: persisted.timeRange === tr.id ? undefined : (tr.id as TimeRange) })
-              }
-            >
-              {tr.label}
-            </Pill>
-          ))}
-        </div>
-
-        <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
+        <div className="flex flex-wrap items-center justify-between gap-3">
           <p className="text-sm text-muted">
-            {loading ? 'Finding best-sellers…' : (
+            {loading ? 'Finding top products…' : (
               <>
-                <span className="font-semibold text-fg">{total}</span> result{total === 1 ? '' : 's'}
+                <span className="font-semibold text-fg">{total}</span> product{total === 1 ? '' : 's'}
               </>
             )}
           </p>
@@ -187,18 +138,10 @@ export default function CategoryPage() {
           </div>
         </div>
 
-        <AdvancedFilters
-          open={advancedOpen}
-          filters={filters}
-          brands={brands}
-          platformBadge={platform.badgeLabel}
-          onChange={patch}
-        />
-
+        <AdvancedFilters open={advancedOpen} filters={filters} brands={brands} onChange={patch} />
         <ActiveFilterChips filters={filters} onChange={patch} onClearAll={clearAll} />
       </div>
 
-      {/* ---- Results ---- */}
       <section className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
         {error ? (
           <EmptyState
@@ -213,13 +156,13 @@ export default function CategoryPage() {
         ) : items.length === 0 ? (
           <EmptyState
             title="No products match your filters"
-            description="Try widening your filters or clearing them to see more best-sellers."
+            description="Try widening or clearing your filters to see more products."
             actionLabel="Clear all filters"
             onAction={clearAll}
           />
         ) : (
           <>
-            <ProductGrid products={items} />
+            <ProductGrid products={items} platformId={platform.id} ranked={persisted.sort === 'popularity'} />
 
             {loadingMore && (
               <div className="mt-6">
@@ -235,12 +178,11 @@ export default function CategoryPage() {
               </div>
             )}
 
-            {/* Infinite-scroll sentinel */}
             <div ref={sentinelRef} className="h-px w-full" aria-hidden />
 
             {!hasMore && (
               <p className="mt-10 text-center text-sm text-muted">
-                You’ve reached the end · {total} best-sellers
+                You’ve reached the end · {total} products
               </p>
             )}
           </>
@@ -252,13 +194,9 @@ export default function CategoryPage() {
 
 function countActive(f: PersistedFilters): number {
   let n = 0;
-  if (f.timeRange) n++;
   if (f.maxPrice != null) n++;
   if (f.minRating != null) n++;
   if (f.minDiscount != null) n++;
-  if (f.flagshipOnly) n++;
   if (f.inStockOnly) n++;
-  if (f.trendingOnly) n++;
-  if (f.bestSellerOnly) n++;
   return n;
 }

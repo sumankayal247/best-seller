@@ -3,26 +3,30 @@ import { Link, NavLink, useLocation } from 'react-router-dom';
 import { Heart, Menu, Search } from 'lucide-react';
 import { GlobalSearch } from '@/components/search/GlobalSearch';
 import { ThemeToggle } from '@/components/ui/ThemeToggle';
+import { CountrySelector } from '@/components/layout/CountrySelector';
 import { MobileDrawer } from '@/components/layout/MobileDrawer';
 import { useHotkey } from '@/hooks/useHotkey';
 import { useUserData } from '@/context/UserDataContext';
+import { useCountry } from '@/context/CountryContext';
 import { cn } from '@/lib/utils';
-
-const NAV_LINKS = [
-  { to: '/', label: 'Platforms', end: true },
-  { to: '/p/amazon', label: 'Explore' },
-  { to: '/favorites', label: 'Favorites' },
-];
 
 export function Navbar() {
   const [searchOpen, setSearchOpen] = useState(false);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const { favorites } = useUserData();
+  const { platforms } = useCountry();
   const location = useLocation();
 
-  // Keyboard shortcuts: "/" and Cmd/Ctrl+K open search.
+  const exploreTo = `/p/${platforms[0]?.id ?? 'flipkart'}`;
+
   useHotkey('/', () => setSearchOpen(true));
   useHotkey('k', () => setSearchOpen(true), { meta: true });
+
+  const navLinks = [
+    { to: '/', label: 'Platforms', end: true },
+    { to: exploreTo, label: 'Explore', end: false },
+    { to: '/favorites', label: 'Favorites', end: false },
+  ];
 
   return (
     <>
@@ -38,17 +42,15 @@ export function Navbar() {
           </Link>
 
           <nav className="ml-4 hidden items-center gap-1 md:flex">
-            {NAV_LINKS.map((link) => (
+            {navLinks.map((link) => (
               <NavLink
-                key={link.to}
+                key={link.label}
                 to={link.to}
                 end={link.end}
                 className={({ isActive }) =>
                   cn(
                     'rounded-full px-3.5 py-2 text-sm font-medium transition',
-                    isActive
-                      ? 'bg-surface-2 text-fg'
-                      : 'text-muted hover:bg-surface-2/60 hover:text-fg',
+                    isActive ? 'bg-surface-2 text-fg' : 'text-muted hover:bg-surface-2/60 hover:text-fg',
                   )
                 }
               >
@@ -65,9 +67,7 @@ export function Navbar() {
             >
               <Search className="h-4 w-4" />
               <span className="hidden lg:inline">Search…</span>
-              <kbd className="ml-2 hidden rounded border border-border bg-surface-2 px-1.5 text-[10px] lg:inline">
-                /
-              </kbd>
+              <kbd className="ml-2 hidden rounded border border-border bg-surface-2 px-1.5 text-[10px] lg:inline">/</kbd>
             </button>
 
             <button
@@ -77,6 +77,8 @@ export function Navbar() {
             >
               <Search className="h-4.5 w-4.5" />
             </button>
+
+            <CountrySelector />
 
             <Link
               to="/favorites"

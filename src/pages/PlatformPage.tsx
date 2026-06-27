@@ -1,5 +1,5 @@
-import { useNavigate, useParams } from 'react-router-dom';
 import { useEffect } from 'react';
+import { useNavigate, useParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Sparkles } from 'lucide-react';
 import { getPlatform } from '@/data/platforms';
@@ -25,7 +25,7 @@ export default function PlatformPage() {
   }, [platform, pushRecentPlatform]);
 
   const { data, loading } = useAsync(
-    () => productRepository.query({ platformId, sort: 'popularity' }, 1, 8),
+    () => productRepository.query({ sort: 'popularity' }, 1, 8),
     [platformId],
   );
 
@@ -33,18 +33,14 @@ export default function PlatformPage() {
 
   return (
     <div>
-      {/* ---- Hero ---- */}
       <section className="relative overflow-hidden">
         <div
-          className="absolute inset-0 opacity-[0.12]"
-          style={{
-            background: `radial-gradient(circle at 20% 0%, ${platform.color}, transparent 55%)`,
-          }}
+          className="absolute inset-0 opacity-[0.1]"
+          style={{ background: `radial-gradient(circle at 18% 0%, ${platform.color}, transparent 55%)` }}
           aria-hidden
         />
         <div className="relative mx-auto max-w-7xl px-4 pb-8 pt-10 sm:px-6 lg:px-8">
           <Breadcrumb items={[{ label: platform.name }]} />
-
           <motion.div
             initial={{ opacity: 0, y: 14 }}
             animate={{ opacity: 1, y: 0 }}
@@ -52,28 +48,23 @@ export default function PlatformPage() {
             className="mt-6 flex items-center gap-4"
           >
             <PlatformLogo platform={platform} className="h-16 w-16 shrink-0" textClassName="text-xl" />
-            <div>
-              <h1 className="text-3xl font-extrabold tracking-tight text-fg sm:text-5xl">
-                Best of <span style={{ color: platform.color }}>{platform.name}</span>
-              </h1>
-            </div>
+            <h1 className="text-3xl font-extrabold tracking-tight text-fg sm:text-5xl">
+              Best of <span style={{ color: platform.color }}>{platform.name}</span>
+            </h1>
           </motion.div>
-
           <motion.p
             initial={{ opacity: 0, y: 14 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5, delay: 0.08 }}
             className="mt-4 max-w-xl text-base leading-relaxed text-muted sm:text-lg"
           >
-            Discover the highest-selling products across every category. Pick a category to dive in.
+            Discover the top-rated products across every category. Pick a category to dive in.
           </motion.p>
         </div>
       </section>
 
-      {/* ---- Sticky category picker ---- */}
-      <CategoryBar onSelect={(categoryId) => navigate(`/p/${platform.id}/${categoryId}`)} />
+      <CategoryBar onSelect={(slug) => navigate(`/p/${platform.id}/${slug}`)} />
 
-      {/* ---- Top picks preview ---- */}
       <section className="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
         <div className="mb-6 flex items-center gap-2">
           <Sparkles className="h-5 w-5 text-brand" />
@@ -83,11 +74,11 @@ export default function PlatformPage() {
         {loading ? (
           <ProductGridSkeleton count={8} />
         ) : data && data.items.length > 0 ? (
-          <ProductGrid products={data.items} />
+          <ProductGrid products={data.items} platformId={platform.id} ranked />
         ) : (
           <EmptyState
             title="Nothing here yet"
-            description="We couldn’t find any products for this platform. Try another store."
+            description="We couldn’t load products right now. Please try again."
             actionLabel="Back to platforms"
             onAction={() => navigate('/')}
           />

@@ -5,6 +5,7 @@ import App from '@/App';
 import { ThemeProvider } from '@/context/ThemeContext';
 import { ToastProvider } from '@/context/ToastContext';
 import { UserDataProvider } from '@/context/UserDataContext';
+import { CountryProvider } from '@/context/CountryContext';
 import '@/index.css';
 
 createRoot(document.getElementById('root')!).render(
@@ -12,11 +13,13 @@ createRoot(document.getElementById('root')!).render(
     {/* basename keeps client routing correct when served from a sub-path (GitHub Pages). */}
     <BrowserRouter basename={import.meta.env.BASE_URL}>
       <ThemeProvider>
-        <UserDataProvider>
-          <ToastProvider>
-            <App />
-          </ToastProvider>
-        </UserDataProvider>
+        <CountryProvider>
+          <UserDataProvider>
+            <ToastProvider>
+              <App />
+            </ToastProvider>
+          </UserDataProvider>
+        </CountryProvider>
       </ThemeProvider>
     </BrowserRouter>
   </StrictMode>,

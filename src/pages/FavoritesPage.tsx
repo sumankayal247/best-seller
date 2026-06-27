@@ -6,12 +6,16 @@ import { ProductGridSkeleton } from '@/components/product/ProductCardSkeleton';
 import { EmptyState } from '@/components/common/EmptyState';
 import { Button } from '@/components/ui/Button';
 import { useUserData } from '@/context/UserDataContext';
+import { useCountry } from '@/context/CountryContext';
 import { useAsync } from '@/hooks/useAsync';
 import { productRepository } from '@/services/productRepository';
 
 export default function FavoritesPage() {
   const navigate = useNavigate();
   const { favorites, clearFavorites } = useUserData();
+  const { platforms } = useCountry();
+  const platformId = platforms[0]?.id ?? 'flipkart';
+
   const { data, loading } = useAsync(
     () => productRepository.getByIds(favorites),
     [favorites.join(',')],
@@ -45,11 +49,11 @@ export default function FavoritesPage() {
             icon={Heart}
             title="No favorites yet"
             description="Tap the heart on any product to save it here for later."
-            actionLabel="Explore best-sellers"
+            actionLabel="Explore products"
             onAction={() => navigate('/')}
           />
         ) : (
-          <ProductGrid products={data ?? []} />
+          <ProductGrid products={data ?? []} platformId={platformId} />
         )}
       </div>
     </div>

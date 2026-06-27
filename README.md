@@ -41,18 +41,25 @@ the product on the original store.
 
 ### Highlights
 
-- 🏠 **Beautiful platform cards** with brand accents, hover/elevation and click animations
-- 🗂️ **48+ categories** in a sticky, searchable, horizontally-scrollable bar
-- ⏱️ **Time-range filters** (This Week → Last 5 Years) plus advanced filters (price, rating,
-  discount, brand, trending, best-seller, stock)
-- 🔀 **Sorting** by popularity, rating, reviews, newest, price and discount
-- 🛍️ **Rich product cards** — image, rating, price/MRP/discount, rank, popularity score, best-seller
-  & trending badges, favorite, share and quick-preview
+- 🏠 **Platform tiles** with real brand logos, hover/elevation and click animations
+- 🌍 **Country selector** (India by default) that switches currency and the stores shown
+- 🗂️ **24 real categories** in a sticky, searchable, horizontally-scrollable bar
+- 🛍️ **Real product data** from the public DummyJSON catalog — images that genuinely match titles,
+  with real prices, ratings, brands and reviews
+- 📄 **Full product detail page** (image gallery, specs, reviews, related items) — clicking a
+  product opens this, not a random search
+- 🎛️ **Advanced filters** (price, rating, discount, brand, in-stock) and **sorting** (popular,
+  top-rated, biggest discount, price, A–Z)
 - 🔎 **Global command-palette search** (`/` or `⌘/Ctrl + K`) across platforms, categories & products
-- ❤️ **Favorites**, 🕑 **recently viewed** and **recently used platforms** (saved locally)
+- ❤️ **Favorites**, 🕑 **recently viewed** and **recently visited stores** (saved locally)
 - 🌗 **Light / dark mode** with remembered preference and smooth transitions
 - ♾️ **Infinite scroll + load more**, skeleton loaders, empty & error states, toasts
 - 📱 Fully responsive, accessible (keyboard nav, ARIA, semantic HTML) and code-split for speed
+
+> **On "best sellers over time":** real per-store historical best-seller rankings (this week / this
+> year / last 5 years) aren't available from any free public API — they'd require collecting and
+> storing ranking snapshots over time behind a backend. Rather than fake them, those filters are
+> intentionally omitted; products are ranked transparently by their real rating & popularity.
 
 ## 🧱 Tech stack
 

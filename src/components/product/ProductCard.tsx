@@ -1,51 +1,52 @@
 import { memo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Crown, ExternalLink, Eye, Flame, Heart, Share2 } from 'lucide-react';
+import { Eye, Heart, Share2, Star } from 'lucide-react';
 import type { Product } from '@/types';
-import { getPlatform } from '@/data/platforms';
 import { getCategory } from '@/data/categories';
 import { LazyImage } from '@/components/ui/LazyImage';
-import { Rating } from '@/components/ui/Rating';
 import { Badge } from '@/components/ui/Badge';
 import { useUserData } from '@/context/UserDataContext';
+import { useCountry } from '@/context/CountryContext';
 import { useToast } from '@/context/ToastContext';
 import { shareProduct } from '@/components/product/productActions';
-import { cn, formatCompact, formatPrice } from '@/lib/utils';
+import { cn } from '@/lib/utils';
 
 interface ProductCardProps {
   product: Product;
+  platformId: string;
   index?: number;
+  rank?: number;
   onQuickView: (product: Product) => void;
-  /** Called when the user opens the product (records recently-viewed). */
-  onOpen: (product: Product) => void;
 }
 
-function ProductCardBase({ product, index = 0, onQuickView, onOpen }: ProductCardProps) {
-  const platform = getPlatform(product.platformId);
-  const category = getCategory(product.categoryId);
-  const { isFavorite, toggleFavorite } = useUserData();
+function ProductCardBase({ product, platformId, index = 0, rank, onQuickView }: ProductCardProps) {
+  const navigate = useNavigate();
+  const category = getCategory(product.category);
+  const { isFavorite, toggleFavorite, pushRecentlyViewed } = useUserData();
+  const { formatPrice } = useCountry();
   const { notify } = useToast();
   const favorite = isFavorite(product.id);
 
   const open = () => {
-    onOpen(product);
-    window.open(product.url, '_blank', 'noopener,noreferrer');
+    pushRecentlyViewed(product.id);
+    navigate(`/p/${platformId}/product/${product.id}`);
   };
 
   const stop = (e: React.MouseEvent) => e.stopPropagation();
 
   const onFavorite = (e: React.MouseEvent) => {
     stop(e);
-    const nowFav = toggleFavorite(product.id);
-    notify(nowFav ? 'Added to favorites' : 'Removed from favorites', nowFav ? 'success' : 'info');
+    const now = toggleFavorite(product.id);
+    notify(now ? 'Added to favorites' : 'Removed from favorites', now ? 'success' : 'info');
   };
 
   const onShare = async (e: React.MouseEvent) => {
     stop(e);
-    const result = await shareProduct(product);
-    if (result === 'copied') notify('Link copied to clipboard');
-    else if (result === 'shared') notify('Shared');
-    else if (result === 'failed') notify('Could not share link', 'error');
+    const r = await shareProduct(product, platformId);
+    if (r === 'copied') notify('Link copied to clipboard');
+    else if (r === 'shared') notify('Shared');
+    else if (r === 'failed') notify('Could not share', 'error');
   };
 
   const onPreview = (e: React.MouseEvent) => {
@@ -56,53 +57,44 @@ function ProductCardBase({ product, index = 0, onQuickView, onOpen }: ProductCar
   return (
     <motion.article
       layout
-      initial={{ opacity: 0, y: 16 }}
+      initial={{ opacity: 0, y: 14 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.4, delay: Math.min(index * 0.03, 0.3) }}
+      transition={{ duration: 0.35, delay: Math.min(index * 0.025, 0.25) }}
       whileHover={{ y: -4 }}
       onClick={open}
       role="link"
       tabIndex={0}
-      aria-label={`${product.title} — open on ${platform?.name}`}
-      onKeyDown={(e) => {
-        if (e.key === 'Enter') open();
-      }}
+      aria-label={product.title}
+      onKeyDown={(e) => e.key === 'Enter' && open()}
       className="group relative flex cursor-pointer flex-col overflow-hidden rounded-3xl border border-border bg-surface shadow-soft transition-shadow duration-300 hover:shadow-soft-lg focus:outline-none focus-visible:ring-2 focus-visible:ring-brand"
     >
-      {/* ---- Image + overlays ---- */}
-      <div className="relative aspect-[4/3] overflow-hidden bg-surface-2">
+      <div className="relative aspect-square overflow-hidden bg-white">
         <LazyImage
-          src={product.image}
+          src={product.thumbnail}
           alt={product.title}
-          seed={product.id}
-          className="h-full w-full transition-transform duration-500 group-hover:scale-105"
+          seed={String(product.id)}
+          className="h-full w-full p-4 transition-transform duration-500 group-hover:scale-[1.04]"
+          fit="contain"
         />
 
-        {/* Rank chip */}
-        <span className="absolute left-3 top-3 grid h-8 min-w-8 place-items-center rounded-full bg-black/70 px-2 text-xs font-bold text-white backdrop-blur">
-          #{product.rank}
-        </span>
+        {rank != null && rank <= 3 && (
+          <span className="absolute left-3 top-3 grid h-7 min-w-7 place-items-center rounded-full bg-amber-400 px-2 text-xs font-bold text-amber-950 shadow-soft">
+            #{rank}
+          </span>
+        )}
 
-        {/* Status badges */}
-        <div className="absolute right-3 top-3 flex flex-col items-end gap-1.5">
-          {product.isBestSeller && (
-            <Badge tone="amber" className="bg-amber-500/90 text-white ring-0 backdrop-blur">
-              <Crown className="h-3 w-3" /> Best Seller
-            </Badge>
-          )}
-          {product.isTrending && (
-            <Badge tone="rose" className="bg-rose-500/90 text-white ring-0 backdrop-blur">
-              <Flame className="h-3 w-3" /> Trending
-            </Badge>
-          )}
-        </div>
+        {product.discount > 0 && (
+          <span className="absolute right-3 top-3 rounded-full bg-brand px-2 py-0.5 text-[11px] font-bold text-white shadow-soft">
+            -{product.discount}%
+          </span>
+        )}
 
-        {/* Hover quick-actions (favorite / share / preview) */}
+        {/* Hover quick-actions */}
         <div className="absolute bottom-3 right-3 flex translate-y-2 items-center gap-1.5 opacity-0 transition-all duration-300 group-hover:translate-y-0 group-hover:opacity-100 max-md:translate-y-0 max-md:opacity-100">
-          <IconAction label={favorite ? 'Remove favorite' : 'Add favorite'} onClick={onFavorite} active={favorite}>
+          <IconAction label={favorite ? 'Remove favorite' : 'Add favorite'} onClick={onFavorite}>
             <Heart className={cn('h-4 w-4', favorite && 'fill-rose-500 text-rose-500')} />
           </IconAction>
-          <IconAction label="Share product" onClick={onShare}>
+          <IconAction label="Share" onClick={onShare}>
             <Share2 className="h-4 w-4" />
           </IconAction>
           <IconAction label="Quick preview" onClick={onPreview}>
@@ -110,51 +102,30 @@ function ProductCardBase({ product, index = 0, onQuickView, onOpen }: ProductCar
           </IconAction>
         </div>
 
-        {/* Discount flag */}
-        {product.discount > 0 && (
-          <span className="absolute bottom-3 left-3 rounded-full bg-brand px-2.5 py-1 text-xs font-bold text-white shadow-soft">
-            {product.discount}% OFF
-          </span>
-        )}
-
         {!product.inStock && (
-          <div className="absolute inset-0 grid place-items-center bg-black/45 backdrop-blur-[1px]">
-            <span className="rounded-full bg-white/90 px-3 py-1 text-xs font-bold text-zinc-800">
+          <div className="absolute inset-0 grid place-items-center bg-white/60 backdrop-blur-[1px]">
+            <span className="rounded-full bg-zinc-900/90 px-3 py-1 text-xs font-bold text-white">
               Out of stock
             </span>
           </div>
         )}
       </div>
 
-      {/* ---- Body ---- */}
       <div className="flex flex-1 flex-col p-4">
         <div className="flex items-center justify-between gap-2">
           <span className="truncate text-xs font-semibold uppercase tracking-wide text-muted">
             {product.brand}
           </span>
-          {platform && (
-            <span
-              className="shrink-0 rounded-full px-2 py-0.5 text-[10px] font-bold text-white"
-              style={{ backgroundImage: `linear-gradient(135deg, ${platform.color}, ${platform.colorTo})` }}
-            >
-              {platform.name}
-            </span>
-          )}
+          <span className="inline-flex shrink-0 items-center gap-0.5 rounded-md bg-emerald-500/12 px-1.5 py-0.5 text-xs font-semibold text-emerald-600 dark:text-emerald-400">
+            {product.rating.toFixed(1)} <Star className="h-3 w-3 fill-current" />
+          </span>
         </div>
 
         <h3 className="mt-1.5 line-clamp-2 min-h-[2.5rem] text-sm font-semibold leading-snug text-fg">
           {product.title}
         </h3>
 
-        <p className="mt-1 line-clamp-2 text-xs leading-relaxed text-muted">{product.description}</p>
-
-        <div className="mt-2.5 flex items-center justify-between gap-2">
-          <Rating value={product.rating} count={product.ratingCount} />
-          {category && <span className="truncate text-[11px] text-muted">{category.name}</span>}
-        </div>
-
-        {/* Price row */}
-        <div className="mt-3 flex items-end gap-2">
+        <div className="mt-2 flex items-end gap-2">
           <span className="text-lg font-extrabold tracking-tight text-fg">
             {formatPrice(product.price)}
           </span>
@@ -163,34 +134,10 @@ function ProductCardBase({ product, index = 0, onQuickView, onOpen }: ProductCar
           )}
         </div>
 
-        {/* Popularity meter */}
-        <div className="mt-3">
-          <div className="flex items-center justify-between text-[11px] text-muted">
-            <span>Popularity</span>
-            <span className="font-semibold text-fg">{product.popularity}</span>
-          </div>
-          <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-surface-2">
-            <div
-              className="h-full rounded-full bg-gradient-to-r from-emerald-400 to-emerald-600"
-              style={{ width: `${product.popularity}%` }}
-            />
-          </div>
+        <div className="mt-2 flex items-center gap-2">
+          {category && <Badge tone="neutral">{category.name}</Badge>}
+          {product.popularity >= 90 && <Badge tone="amber">Top rated</Badge>}
         </div>
-
-        {/* Always-visible primary CTA */}
-        <button
-          onClick={(e) => {
-            stop(e);
-            open();
-          }}
-          className="mt-4 inline-flex h-10 w-full items-center justify-center gap-1.5 rounded-full bg-surface-2 text-sm font-semibold text-fg transition-all duration-200 hover:bg-brand hover:text-white active:scale-[0.98]"
-        >
-          Open on {platform?.name}
-          <ExternalLink className="h-3.5 w-3.5" />
-        </button>
-        <span className="mt-1.5 text-center text-[10px] text-muted">
-          {formatCompact(product.ratingCount)} ratings · #{product.rank} in {category?.name}
-        </span>
       </div>
     </motion.article>
   );
@@ -200,22 +147,17 @@ function IconAction({
   label,
   onClick,
   children,
-  active,
 }: {
   label: string;
   onClick: (e: React.MouseEvent) => void;
   children: React.ReactNode;
-  active?: boolean;
 }) {
   return (
     <button
       onClick={onClick}
       aria-label={label}
       title={label}
-      className={cn(
-        'grid h-9 w-9 place-items-center rounded-full border border-border bg-surface/90 text-fg shadow-soft backdrop-blur transition hover:scale-110 hover:bg-surface active:scale-95',
-        active && 'border-rose-200 dark:border-rose-900',
-      )}
+      className="grid h-9 w-9 place-items-center rounded-full border border-border bg-surface/90 text-fg shadow-soft backdrop-blur transition hover:scale-110 hover:bg-surface active:scale-95"
     >
       {children}
     </button>

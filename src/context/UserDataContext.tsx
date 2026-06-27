@@ -12,13 +12,13 @@ const RECENT_VIEW_LIMIT = 24;
 const RECENT_PLATFORM_LIMIT = 6;
 
 interface UserDataValue {
-  favorites: string[];
-  isFavorite: (id: string) => boolean;
-  toggleFavorite: (id: string) => boolean; // returns the new state
+  favorites: number[];
+  isFavorite: (id: number) => boolean;
+  toggleFavorite: (id: number) => boolean; // returns the new state
   clearFavorites: () => void;
 
-  recentlyViewed: string[];
-  pushRecentlyViewed: (id: string) => void;
+  recentlyViewed: number[];
+  pushRecentlyViewed: (id: number) => void;
   clearRecentlyViewed: () => void;
 
   recentPlatforms: string[];
@@ -28,17 +28,17 @@ interface UserDataValue {
 const UserDataContext = createContext<UserDataValue | null>(null);
 
 export function UserDataProvider({ children }: { children: React.ReactNode }) {
-  const [favorites, setFavorites] = useState<string[]>(() =>
-    storage.get<string[]>(STORAGE_KEYS.favorites, []),
+  const [favorites, setFavorites] = useState<number[]>(() =>
+    storage.get<number[]>(STORAGE_KEYS.favorites, []),
   );
-  const [recentlyViewed, setRecentlyViewed] = useState<string[]>(() =>
-    storage.get<string[]>(STORAGE_KEYS.recentlyViewed, []),
+  const [recentlyViewed, setRecentlyViewed] = useState<number[]>(() =>
+    storage.get<number[]>(STORAGE_KEYS.recentlyViewed, []),
   );
   const [recentPlatforms, setRecentPlatforms] = useState<string[]>(() =>
     storage.get<string[]>(STORAGE_KEYS.recentPlatforms, []),
   );
 
-  const toggleFavorite = useCallback((id: string) => {
+  const toggleFavorite = useCallback((id: number) => {
     let nowFav = false;
     setFavorites((prev) => {
       const exists = prev.includes(id);
@@ -55,7 +55,7 @@ export function UserDataProvider({ children }: { children: React.ReactNode }) {
     storage.set(STORAGE_KEYS.favorites, []);
   }, []);
 
-  const pushRecentlyViewed = useCallback((id: string) => {
+  const pushRecentlyViewed = useCallback((id: number) => {
     setRecentlyViewed((prev) => {
       const next = [id, ...prev.filter((x) => x !== id)].slice(0, RECENT_VIEW_LIMIT);
       storage.set(STORAGE_KEYS.recentlyViewed, next);
@@ -79,7 +79,7 @@ export function UserDataProvider({ children }: { children: React.ReactNode }) {
   const value = useMemo<UserDataValue>(
     () => ({
       favorites,
-      isFavorite: (id: string) => favorites.includes(id),
+      isFavorite: (id: number) => favorites.includes(id),
       toggleFavorite,
       clearFavorites,
       recentlyViewed,

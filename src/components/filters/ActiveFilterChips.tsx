@@ -1,44 +1,7 @@
-import { motion, AnimatePresence } from 'framer-motion';
+import { AnimatePresence, motion } from 'framer-motion';
 import { X } from 'lucide-react';
 import type { ProductFilters } from '@/types';
-import { TIME_RANGES } from '@/components/filters/filterMeta';
-import { formatPrice } from '@/lib/utils';
-
-interface Chip {
-  key: string;
-  label: string;
-  clear: Partial<ProductFilters>;
-}
-
-/** Derives a flat list of removable chips from the active filter object. */
-function deriveChips(filters: ProductFilters): Chip[] {
-  const chips: Chip[] = [];
-  if (filters.timeRange) {
-    const tr = TIME_RANGES.find((t) => t.id === filters.timeRange);
-    if (tr) chips.push({ key: 'time', label: tr.label, clear: { timeRange: undefined } });
-  }
-  if (filters.maxPrice != null) {
-    chips.push({ key: 'price', label: `≤ ${formatPrice(filters.maxPrice)}`, clear: { maxPrice: undefined } });
-  }
-  if (filters.minRating != null) {
-    chips.push({ key: 'rating', label: `${filters.minRating}★ & up`, clear: { minRating: undefined } });
-  }
-  if (filters.minDiscount != null) {
-    chips.push({ key: 'discount', label: `${filters.minDiscount}%+ off`, clear: { minDiscount: undefined } });
-  }
-  if (filters.bestSellerOnly) chips.push({ key: 'best', label: 'Best Seller', clear: { bestSellerOnly: undefined } });
-  if (filters.trendingOnly) chips.push({ key: 'trend', label: 'Trending', clear: { trendingOnly: undefined } });
-  if (filters.flagshipOnly) chips.push({ key: 'flag', label: 'Flagship', clear: { flagshipOnly: undefined } });
-  if (filters.inStockOnly) chips.push({ key: 'stock', label: 'In stock', clear: { inStockOnly: undefined } });
-  for (const brand of filters.brands ?? []) {
-    chips.push({
-      key: `brand-${brand}`,
-      label: brand,
-      clear: { brands: (filters.brands ?? []).filter((b) => b !== brand) },
-    });
-  }
-  return chips;
-}
+import { useCountry } from '@/context/CountryContext';
 
 interface ActiveFilterChipsProps {
   filters: ProductFilters;
@@ -47,7 +10,24 @@ interface ActiveFilterChipsProps {
 }
 
 export function ActiveFilterChips({ filters, onChange, onClearAll }: ActiveFilterChipsProps) {
-  const chips = deriveChips(filters);
+  const { formatPrice } = useCountry();
+
+  const chips: { key: string; label: string; clear: Partial<ProductFilters> }[] = [];
+  if (filters.maxPrice != null)
+    chips.push({ key: 'price', label: `≤ ${formatPrice(filters.maxPrice)}`, clear: { maxPrice: undefined } });
+  if (filters.minRating != null)
+    chips.push({ key: 'rating', label: `${filters.minRating}★ & up`, clear: { minRating: undefined } });
+  if (filters.minDiscount != null)
+    chips.push({ key: 'discount', label: `${filters.minDiscount}%+ off`, clear: { minDiscount: undefined } });
+  if (filters.inStockOnly) chips.push({ key: 'stock', label: 'In stock', clear: { inStockOnly: undefined } });
+  for (const brand of filters.brands ?? []) {
+    chips.push({
+      key: `brand-${brand}`,
+      label: brand,
+      clear: { brands: (filters.brands ?? []).filter((b) => b !== brand) },
+    });
+  }
+
   if (chips.length === 0) return null;
 
   return (

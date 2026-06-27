@@ -1,67 +1,39 @@
-import type { Category } from '@/types';
+// Category metadata that maps the DummyJSON catalog's real category slugs to
+// friendly names and Lucide icons. These are the actual categories the live
+// catalog contains — no invented categories with no data behind them.
+export interface Category {
+  slug: string;
+  name: string;
+  icon: string;
+}
 
-/**
- * 48 shopping categories grouped for the picker. `icon` is a Lucide icon name
- * resolved at render time (see components/category/categoryIcon.ts).
- */
 export const CATEGORIES: Category[] = [
-  { id: 'cooking', name: 'Cooking', icon: 'ChefHat', group: 'Home & Kitchen' },
-  { id: 'kitchen', name: 'Kitchen', icon: 'Utensils', group: 'Home & Kitchen' },
-  { id: 'utensils', name: 'Utensils', icon: 'UtensilsCrossed', group: 'Home & Kitchen' },
-  { id: 'appliances', name: 'Appliances', icon: 'Microwave', group: 'Home & Kitchen' },
-  { id: 'cleaning', name: 'Cleaning', icon: 'SprayCan', group: 'Home & Kitchen' },
-  { id: 'storage', name: 'Storage', icon: 'Boxes', group: 'Home & Kitchen' },
-  { id: 'bathroom', name: 'Bathroom', icon: 'ShowerHead', group: 'Home & Kitchen' },
-  { id: 'lighting', name: 'Lighting', icon: 'Lightbulb', group: 'Home & Kitchen' },
-
-  { id: 'electronics', name: 'Electronics', icon: 'CircuitBoard', group: 'Electronics' },
-  { id: 'mobiles', name: 'Mobiles', icon: 'Smartphone', group: 'Electronics' },
-  { id: 'laptops', name: 'Laptops', icon: 'Laptop', group: 'Electronics' },
-  { id: 'gaming', name: 'Gaming', icon: 'Gamepad2', group: 'Electronics' },
-  { id: 'smart-home', name: 'Smart Home', icon: 'House', group: 'Electronics' },
-  { id: 'camera', name: 'Camera', icon: 'Camera', group: 'Electronics' },
-  { id: 'photography', name: 'Photography', icon: 'Aperture', group: 'Electronics' },
-  { id: 'utilities', name: 'Utilities', icon: 'Plug', group: 'Electronics' },
-
-  { id: 'furniture', name: 'Furniture', icon: 'Armchair', group: 'Living' },
-  { id: 'home-decor', name: 'Home Decor', icon: 'Lamp', group: 'Living' },
-  { id: 'gardening', name: 'Gardening', icon: 'Sprout', group: 'Living' },
-  { id: 'pet-supplies', name: 'Pet Supplies', icon: 'PawPrint', group: 'Living' },
-
-  { id: 'fashion', name: 'Fashion', icon: 'Shirt', group: 'Fashion' },
-  { id: 'men', name: 'Men', icon: 'User', group: 'Fashion' },
-  { id: 'women', name: 'Women', icon: 'UserRound', group: 'Fashion' },
-  { id: 'kids', name: 'Kids', icon: 'Baby', group: 'Fashion' },
-  { id: 'jewelry', name: 'Jewelry', icon: 'Gem', group: 'Fashion' },
-  { id: 'accessories', name: 'Accessories', icon: 'Glasses', group: 'Fashion' },
-  { id: 'watches', name: 'Watches', icon: 'Watch', group: 'Fashion' },
-
-  { id: 'beauty', name: 'Beauty', icon: 'Sparkles', group: 'Health & Beauty' },
-  { id: 'health', name: 'Health', icon: 'HeartPulse', group: 'Health & Beauty' },
-  { id: 'fitness', name: 'Fitness', icon: 'Dumbbell', group: 'Health & Beauty' },
-  { id: 'sports', name: 'Sports', icon: 'Trophy', group: 'Health & Beauty' },
-
-  { id: 'baby-products', name: 'Baby Products', icon: 'Baby', group: 'Family' },
-  { id: 'toys', name: 'Toys', icon: 'ToyBrick', group: 'Family' },
-  { id: 'books', name: 'Books', icon: 'BookOpen', group: 'Family' },
-  { id: 'stationery', name: 'Stationery', icon: 'PenTool', group: 'Family' },
-  { id: 'musical-instruments', name: 'Musical Instruments', icon: 'Music', group: 'Family' },
-
-  { id: 'groceries', name: 'Groceries', icon: 'ShoppingBasket', group: 'Daily' },
-  { id: 'food', name: 'Food', icon: 'Pizza', group: 'Daily' },
-  { id: 'office', name: 'Office', icon: 'Briefcase', group: 'Daily' },
-  { id: 'travel', name: 'Travel', icon: 'Plane', group: 'Daily' },
-
-  { id: 'automotive', name: 'Automotive', icon: 'Car', group: 'More' },
-  { id: 'diy', name: 'DIY', icon: 'Hammer', group: 'More' },
-  { id: 'industrial', name: 'Industrial', icon: 'Factory', group: 'More' },
-  { id: 'tools', name: 'Tools', icon: 'Wrench', group: 'More' },
-  { id: 'outdoor', name: 'Outdoor', icon: 'Tent', group: 'More' },
-  { id: 'audio', name: 'Audio', icon: 'Headphones', group: 'More' },
-  { id: 'wearables', name: 'Wearables', icon: 'Watch', group: 'More' },
-  { id: 'art-craft', name: 'Art & Craft', icon: 'Palette', group: 'More' },
+  { slug: 'smartphones', name: 'Smartphones', icon: 'Smartphone' },
+  { slug: 'laptops', name: 'Laptops', icon: 'Laptop' },
+  { slug: 'tablets', name: 'Tablets', icon: 'Tablet' },
+  { slug: 'mobile-accessories', name: 'Mobile Accessories', icon: 'Cable' },
+  { slug: 'kitchen-accessories', name: 'Kitchen', icon: 'Utensils' },
+  { slug: 'groceries', name: 'Groceries', icon: 'ShoppingBasket' },
+  { slug: 'home-decoration', name: 'Home Decor', icon: 'Lamp' },
+  { slug: 'furniture', name: 'Furniture', icon: 'Armchair' },
+  { slug: 'beauty', name: 'Beauty', icon: 'Sparkles' },
+  { slug: 'skin-care', name: 'Skin Care', icon: 'Droplets' },
+  { slug: 'fragrances', name: 'Fragrances', icon: 'FlaskConical' },
+  { slug: 'mens-shirts', name: "Men's Shirts", icon: 'Shirt' },
+  { slug: 'mens-shoes', name: "Men's Shoes", icon: 'Footprints' },
+  { slug: 'mens-watches', name: "Men's Watches", icon: 'Watch' },
+  { slug: 'womens-dresses', name: "Women's Dresses", icon: 'Shirt' },
+  { slug: 'womens-shoes', name: "Women's Shoes", icon: 'Footprints' },
+  { slug: 'womens-watches', name: "Women's Watches", icon: 'Watch' },
+  { slug: 'womens-bags', name: "Women's Bags", icon: 'ShoppingBag' },
+  { slug: 'womens-jewellery', name: 'Jewellery', icon: 'Gem' },
+  { slug: 'tops', name: 'Tops', icon: 'Shirt' },
+  { slug: 'sunglasses', name: 'Sunglasses', icon: 'Glasses' },
+  { slug: 'sports-accessories', name: 'Sports', icon: 'Dumbbell' },
+  { slug: 'vehicle', name: 'Vehicles', icon: 'Car' },
+  { slug: 'motorcycle', name: 'Motorcycle', icon: 'Bike' },
 ];
 
-const CATEGORY_MAP = new Map(CATEGORIES.map((c) => [c.id, c]));
+const CATEGORY_MAP = new Map(CATEGORIES.map((c) => [c.slug, c]));
 
-export const getCategory = (id: string): Category | undefined => CATEGORY_MAP.get(id);
+export const getCategory = (slug: string): Category | undefined => CATEGORY_MAP.get(slug);

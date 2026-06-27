@@ -1,30 +1,20 @@
 import { AnimatePresence, motion } from 'framer-motion';
-import { BadgeCheck, Flame, PackageCheck, Crown } from 'lucide-react';
+import { PackageCheck } from 'lucide-react';
 import type { ProductFilters } from '@/types';
-import {
-  DISCOUNT_OPTIONS,
-  PRICE_BOUNDS,
-  RATING_OPTIONS,
-} from '@/components/filters/filterMeta';
+import { DISCOUNT_OPTIONS, PRICE_BOUNDS, RATING_OPTIONS } from '@/components/filters/filterMeta';
 import { Pill } from '@/components/ui/Pill';
-import { formatPrice } from '@/lib/utils';
+import { useCountry } from '@/context/CountryContext';
 
 interface AdvancedFiltersProps {
   open: boolean;
   filters: ProductFilters;
   brands: string[];
-  platformBadge: string;
   onChange: (patch: Partial<ProductFilters>) => void;
 }
 
-/** Collapsible advanced-filter panel: price, rating, discount, brand, flags. */
-export function AdvancedFilters({
-  open,
-  filters,
-  brands,
-  platformBadge,
-  onChange,
-}: AdvancedFiltersProps) {
+/** Collapsible advanced-filter panel: price, rating, discount, brand, stock. */
+export function AdvancedFilters({ open, filters, brands, onChange }: AdvancedFiltersProps) {
+  const { formatPrice } = useCountry();
   const maxPrice = filters.maxPrice ?? PRICE_BOUNDS.max;
 
   const toggleBrand = (brand: string) => {
@@ -45,18 +35,18 @@ export function AdvancedFilters({
           className="overflow-hidden"
         >
           <div className="card mt-4 grid gap-6 p-5 md:grid-cols-2 lg:grid-cols-4">
-            {/* Price */}
             <div>
               <FilterLabel>Max price</FilterLabel>
               <input
                 type="range"
                 min={PRICE_BOUNDS.min}
                 max={PRICE_BOUNDS.max}
-                step={500}
+                step={10}
                 value={maxPrice}
                 onChange={(e) =>
                   onChange({
-                    maxPrice: Number(e.target.value) >= PRICE_BOUNDS.max ? undefined : Number(e.target.value),
+                    maxPrice:
+                      Number(e.target.value) >= PRICE_BOUNDS.max ? undefined : Number(e.target.value),
                   })
                 }
                 className="mt-3 w-full accent-[rgb(var(--brand))]"
@@ -70,7 +60,6 @@ export function AdvancedFilters({
               </div>
             </div>
 
-            {/* Rating */}
             <div>
               <FilterLabel>Minimum rating</FilterLabel>
               <div className="mt-3 flex flex-wrap gap-2">
@@ -86,7 +75,6 @@ export function AdvancedFilters({
               </div>
             </div>
 
-            {/* Discount */}
             <div>
               <FilterLabel>Minimum discount</FilterLabel>
               <div className="mt-3 flex flex-wrap gap-2">
@@ -102,26 +90,18 @@ export function AdvancedFilters({
               </div>
             </div>
 
-            {/* Quick flags */}
             <div>
-              <FilterLabel>Highlights</FilterLabel>
-              <div className="mt-3 flex flex-wrap gap-2">
-                <Pill active={!!filters.bestSellerOnly} onClick={() => onChange({ bestSellerOnly: !filters.bestSellerOnly })}>
-                  <Crown className="h-3.5 w-3.5" /> Best Seller
-                </Pill>
-                <Pill active={!!filters.trendingOnly} onClick={() => onChange({ trendingOnly: !filters.trendingOnly })}>
-                  <Flame className="h-3.5 w-3.5" /> Trending
-                </Pill>
-                <Pill active={!!filters.flagshipOnly} onClick={() => onChange({ flagshipOnly: !filters.flagshipOnly })}>
-                  <BadgeCheck className="h-3.5 w-3.5" /> {platformBadge}
-                </Pill>
-                <Pill active={!!filters.inStockOnly} onClick={() => onChange({ inStockOnly: !filters.inStockOnly })}>
-                  <PackageCheck className="h-3.5 w-3.5" /> In stock
+              <FilterLabel>Availability</FilterLabel>
+              <div className="mt-3">
+                <Pill
+                  active={!!filters.inStockOnly}
+                  onClick={() => onChange({ inStockOnly: !filters.inStockOnly })}
+                >
+                  <PackageCheck className="h-3.5 w-3.5" /> In stock only
                 </Pill>
               </div>
             </div>
 
-            {/* Brands */}
             {brands.length > 0 && (
               <div className="md:col-span-2 lg:col-span-4">
                 <FilterLabel>Brands</FilterLabel>
@@ -146,7 +126,5 @@ export function AdvancedFilters({
 }
 
 function FilterLabel({ children }: { children: React.ReactNode }) {
-  return (
-    <span className="text-xs font-semibold uppercase tracking-wide text-muted">{children}</span>
-  );
+  return <span className="text-xs font-semibold uppercase tracking-wide text-muted">{children}</span>;
 }

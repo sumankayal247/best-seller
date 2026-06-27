@@ -6,36 +6,28 @@ import { Pill } from '@/components/ui/Pill';
 import { cn } from '@/lib/utils';
 
 interface CategoryBarProps {
-  activeCategoryId?: string;
-  onSelect: (categoryId: string) => void;
+  activeSlug?: string;
+  onSelect: (slug: string) => void;
 }
 
-/**
- * Sticky, horizontally-scrollable category picker with an inline filter box.
- * Pills scroll under arrow buttons on desktop and swipe on touch.
- */
-export function CategoryBar({ activeCategoryId, onSelect }: CategoryBarProps) {
+/** Sticky, horizontally-scrollable category picker with an inline filter box. */
+export function CategoryBar({ activeSlug, onSelect }: CategoryBarProps) {
   const [query, setQuery] = useState('');
   const scrollerRef = useRef<HTMLDivElement>(null);
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
     if (!q) return CATEGORIES;
-    return CATEGORIES.filter(
-      (c) => c.name.toLowerCase().includes(q) || c.group.toLowerCase().includes(q),
-    );
+    return CATEGORIES.filter((c) => c.name.toLowerCase().includes(q));
   }, [query]);
 
-  const nudge = (dir: 1 | -1) => {
-    scrollerRef.current?.scrollBy({ left: dir * 320, behavior: 'smooth' });
-  };
+  const nudge = (dir: 1 | -1) => scrollerRef.current?.scrollBy({ left: dir * 320, behavior: 'smooth' });
 
   return (
     <div className="sticky top-16 z-30 border-b border-border/70 glass">
       <div className="mx-auto max-w-7xl px-4 py-3 sm:px-6 lg:px-8">
         <div className="flex items-center gap-3">
-          {/* Category filter box */}
-          <div className="relative w-44 shrink-0 sm:w-56">
+          <div className="relative w-40 shrink-0 sm:w-56">
             <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted" />
             <input
               value={query}
@@ -63,7 +55,6 @@ export function CategoryBar({ activeCategoryId, onSelect }: CategoryBarProps) {
             <ChevronLeft className="h-4 w-4" />
           </button>
 
-          {/* Scrollable pills */}
           <div
             ref={scrollerRef}
             className="no-scrollbar flex flex-1 items-center gap-2 overflow-x-auto scroll-smooth"
@@ -74,14 +65,14 @@ export function CategoryBar({ activeCategoryId, onSelect }: CategoryBarProps) {
               <span className="py-2 text-sm text-muted">No categories match “{query}”.</span>
             ) : (
               filtered.map((c) => {
-                const active = c.id === activeCategoryId;
+                const active = c.slug === activeSlug;
                 return (
                   <Pill
-                    key={c.id}
+                    key={c.slug}
                     active={active}
                     role="tab"
                     aria-selected={active}
-                    onClick={() => onSelect(c.id)}
+                    onClick={() => onSelect(c.slug)}
                   >
                     <CategoryIcon name={c.icon} className={cn('h-4 w-4', active ? 'text-white' : 'text-brand')} />
                     {c.name}

@@ -3,15 +3,9 @@ export function cn(...parts: Array<string | false | null | undefined>): string {
   return parts.filter(Boolean).join(' ');
 }
 
-const INR = new Intl.NumberFormat('en-IN', {
-  style: 'currency',
-  currency: 'INR',
-  maximumFractionDigits: 0,
-});
+// Currency formatting is country-aware — see useCountry().formatPrice.
 
-export const formatPrice = (value: number): string => INR.format(value);
-
-const COMPACT = new Intl.NumberFormat('en-IN', {
+const COMPACT = new Intl.NumberFormat('en-US', {
   notation: 'compact',
   maximumFractionDigits: 1,
 });
